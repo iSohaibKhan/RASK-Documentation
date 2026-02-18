@@ -8,9 +8,9 @@
 
 ## 1. Overview
 
-**RASK** (Reseller Hub) is a web application for resellers and small businesses to manage inventory, sales, expenses, bank transactions, and marketplace integrations in one place. It supports multiple subscription plans (Free, Basic, Premium, Ultimate, and Beta Tester), onboarding tasks, and a separate admin panel for app operators.
+**RASK** (Reseller Hub) is a web application for resellers and small businesses to manage inventory, sales, expenses, bank transactions, and marketplace integrations in one place. It supports multiple subscription plans (Free, Basic, Premium, Ultimate, and Beta Tester for testing), onboarding tasks, and a separate admin panel for app operators.
 
-**Core value:** Track inventory, report sales, record expenses, connect marketplaces (eBay, Etsy, Shopify, Grailed, Depop, Poshmark, Mercari, Whatnot), sync orders and products where APIs exist, import via CSV where they do not, connect bank accounts via Plaid, run P&L and tax-related reports, and reconcile sales to expenses.
+**Core value:** Track inventory, report sales, record expenses, connect marketplaces (eBay, Etsy, Shopify, Grailed, Depop, Poshmark, Mercari, Whatnot), sync orders and products where APIs exist, import via CSV where they do not as secondary option, connect bank accounts via Plaid, run P&L and tax-related reports, and reconcile sales to expenses.
 
 ---
 
@@ -37,319 +37,291 @@ Plan is stored per user in **User Profile** (account email, billing email, plan)
 
 ## 3. Authentication and Account Management
 
-- **Root:** `/` redirects to login (or dashboard if already logged in).
-- **Registration:** Sign up at `/accounts/register/` (can be disabled via App Settings).
-- **Login:** Email or username at `/accounts/login/`.
-- **Logout:** POST to `/accounts/logout/`.
-- **Password reset:** Custom flow at `/accounts/password-reset/`; Django’s password reset templates (V3) for reset link and confirmation.
-- **Account settings:** `/settings/account/` – user can update profile (e.g. billing email, plan display); plan changes are typically done by admin/support.
+**What it does:** Lets users create an account, sign in, recover their password, and manage their profile so only they can access their data.
+
+- **Root (`/`):** Sends the visitor to the login page if they are not logged in, or to the dashboard if they are. This is the app’s entry point.
+- **Registration:** Lets new users sign up with email and password. Admins can turn registration off in App Settings so no new accounts can be created.
+- **Login:** Lets users sign in with either **email or username** and password. After success they are taken to the dashboard.
+- **Logout:** Signs the user out and clears their session so the next visit requires login again.
+- **Password reset:** Lets users request a reset link by email. They receive a link, set a new password, and can then log in again. The flow uses custom reset request plus Django’s reset/confirm pages.
+- **Account settings:** Lets users view and update their profile (e.g. billing email). Plan is shown here; actual plan changes are done by admin/support, not by the user.
 
 ---
 
 ## 4. Dashboard
 
-- **Dashboard home:** `/dashboards/` – main landing after login. Shows high-level metrics (e.g. inventory count, sales summary, expenses, recent activity) and quick links.
-- **Dashboard export:** `/dashboards/export/` – export dashboard data as CSV.
+**What it does:** Gives a single overview of the business so the user can see key numbers and jump to the main areas of the app.
+
+- **Dashboard home:** The first screen after login. It shows high-level metrics (e.g. total inventory count, sales summary, expenses, recent activity) and quick links to Inventory, Sales, Expenses, Reports, Integrations, and Finance. The user can see “where things stand” without opening each section.
+- **Dashboard export:** Exports the same dashboard data (or a summary of it) as a CSV file so the user can use it in spreadsheets or share it.
 
 ---
 
 ## 5. Inventory
 
-- **List:** `/add-inventory/` – view all inventory items (title, SKU, purchase price, purchase date, quantity, status, consignor, extra data).
-- **Create:** `/add-inventory/new/` – add a single item (title, SKU optional, purchase price, purchase date, quantity, status, consignor).
-- **Edit:** `/add-inventory/<id>/edit/` – edit an item.
-- **Delete:** `/add-inventory/<id>/delete/` – delete an item.
-- **Bulk edit:** `/add-inventory/bulk-edit/` – select multiple items and edit in bulk.
-- **Bulk delete:** `/add-inventory/bulk-delete/` – select multiple items and delete.
+**What it does:** Lets the user keep a list of every item they have for sale—what they bought, how much they paid, how many they have, and who it belongs to (themselves or a consignor). This is the source for COGS and stock when reporting sales.
 
-Inventory supports **consignor** (vendor) linking and **extra_data** (e.g. Poshmark brand, color, size). Quantity can be decremented when a sale is created (sold status when quantity reaches zero).
+- **List:** Shows all inventory items in one place with title, SKU (if used), purchase price, purchase date, quantity, status (e.g. available/sold), consignor (if any), and extra fields (e.g. brand, color, size). User can search or filter to find items quickly.
+- **Create:** Adds one new item. User enters title, optional SKU, purchase price, purchase date, quantity, status, and can link a consignor. Optional extra data (e.g. Poshmark-style brand, color, size) can be stored for reporting.
+- **Edit:** Changes any field of an existing item (price, quantity, status, consignor, etc.).
+- **Delete:** Removes an item from inventory permanently.
+- **Bulk edit:** Lets the user select many items at once and change the same field(s) for all of them (e.g. update status or consignor for 50 items in one go).
+- **Bulk delete:** Lets the user select many items and delete them in one action.
+
+When a sale is recorded and linked to an inventory item, the app can decrement quantity; when quantity reaches zero, the item can be marked sold. Consignor linking is used later in the **Consignment Commission** report to calculate what is owed to each consignor.
 
 ---
 
 ## 6. Sales (Report Sale)
 
-- **List:** `/report-sale/` – list all sales with filters (date range, platform, etc.).
-- **Create:** `/report-sale/new/` – record a sale (item, date, quantity, sale price, platform, notes, optional marketplace fields).
-- **Edit:** `/report-sale/<id>/edit/` – edit a sale.
-- **Delete:** `/report-sale/<id>/delete/` – delete a sale.
-- **Details (JSON):** `/report-sale/<id>/details/` – sale details for modals or API-like use.
-- **Bulk edit:** `/report-sale/bulk-edit/` – bulk edit selected sales.
+**What it does:** Records every sale the user makes—which item sold, when, for how much, and on which platform. This drives revenue in P&L, platform reports, and reconciliation. Sales can be entered by hand or brought in from marketplaces (sync or CSV).
 
-Sales can have **external_id** and **platform** for deduplication (e.g. from marketplace sync). Optional fields: listing_date, order_id, department, category, brand, color, size, cost_price, sales_tax, etc., for marketplace-specific data.
+- **List:** Shows all sales with filters (e.g. date range, platform). User can see history, totals, and open a sale to view or edit.
+- **Create:** Records a new sale: user picks the inventory item, date, quantity sold, sale price, platform (eBay, Poshmark, etc.), and optional notes. Optional marketplace fields (order ID, brand, color, size, cost, tax, etc.) can be filled for better reporting. If the sale came from a marketplace, an external ID can be stored to avoid duplicates when syncing or re-importing.
+- **Edit:** Updates any detail of an existing sale (price, date, platform, notes, etc.).
+- **Delete:** Removes a sale from the records (e.g. if it was entered by mistake or cancelled).
+- **Details (JSON):** Returns full sale details in a structured format for use in modals or other UI (e.g. “View details” popup) without loading a full page.
+- **Bulk edit:** Lets the user select multiple sales and change the same field(s) for all (e.g. change platform or add a note to many rows at once).
+
+Sales with **external_id** and **platform** allow the app to recognize the same order when it is synced or imported again, so the same sale is not created twice.
 
 ---
 
 ## 7. Expenses (Transaction Expense)
 
-- **List:** `/add-transaction/` – list expenses.
-- **Create:** `/add-transaction/new/` – add expense (date, payee, amount, memo, gl_account, is_sourcing).
-- **Edit:** `/add-transaction/<id>/edit/` – edit expense.
-- **Delete:** `/add-transaction/<id>/delete/` – delete expense.
-- **Bulk edit:** `/add-transaction/bulk-edit/` – bulk edit expenses.
+**What it does:** Records every business expense—shipping, supplies, fees, gas, etc.—so the user can track spending and see net profit (revenue minus COGS and expenses). Expenses can also be matched to sales in reconciliation.
 
-Expenses support **GL account** and **sourcing** flag for reporting and categorization.
+- **List:** Shows all expenses with date, payee, amount, memo. User can scan spending and use filters if needed.
+- **Create:** Adds a new expense: date, payee (e.g. USPS, Amazon), amount, memo, optional GL account (for categorization), and a flag for whether it is **sourcing** (cost of acquiring inventory) or not. Sourcing vs non-sourcing helps with reporting and COGS.
+- **Edit:** Updates any field of an existing expense.
+- **Delete:** Removes an expense from the records.
+- **Bulk edit:** Lets the user select multiple expenses and change the same field(s) for all (e.g. set GL account or sourcing flag for many rows).
+
+GL account and sourcing flag are used in reports and in understanding where money is going (e.g. shipping vs. cost of goods).
 
 ---
 
 ## 8. Vendors and Consignment
 
-- **List:** `/vendors/` – list vendors.
-- **Create:** `/vendors/new/` – add vendor (name, is_consignor, commission_rate, email, phone, address, notes).
-- **Edit:** `/vendors/<id>/edit/` – edit vendor.
-- **Delete:** `/vendors/<id>/delete/` – delete vendor.
+**What it does:** Keeps a list of people or companies the user does business with—suppliers, shipping partners, or **consignors** (people who give items to sell on commission). Consignors get a commission rate; the app uses this to compute how much to pay them in the Consignment Commission report.
 
-**Consignors** are vendors marked with `is_consignor` and optional **commission rate**. Used in inventory (consignor link), sales (consignor), and **Consignment Commission** report. Commission is used for payout and reporting.
+- **List:** Shows all vendors with name, contact info, and whether they are marked as a consignor. User can see who they work with and open one to edit or delete.
+- **Create:** Adds a new vendor: name, contact (email, phone, address), notes, and optionally marks them as a **consignor** and sets a **commission rate** (e.g. 50%). This rate is used when calculating commission owed on sales linked to that consignor.
+- **Edit:** Updates vendor details or commission rate.
+- **Delete:** Removes the vendor. (If inventory or sales are linked, the app may handle that per business rules.)
+
+Inventory items and sales can be linked to a consignor. The **Consignment Commission** report then shows how much is owed to each consignor based on their sales and commission rate, so the user can pay them correctly.
 
 ---
 
 ## 9. Transaction Details
 
-- **Page:** `/transaction-details/` – view combining sales, expenses, and (if applicable) bank transactions in a unified view (e.g. by date or category).
-- **Export:** `/transaction-details/export/` – export transaction details to CSV.
+**What it does:** Shows all money movement in one place—sales (money in), expenses (money out), and (if connected) bank transactions—so the user can see a clear timeline of income and spending, and export it.
 
-Used for a clear view of money in/out and to complete the “View Transaction Details” onboarding task.
+- **Transaction Details page:** Combines sales, expenses, and bank transactions (when Plaid is connected) in a single view, typically by date or category. The user can see “what came in and what went out” without jumping between Sales and Expenses. Visiting this page also completes the “View Transaction Details” task in Get Started.
+- **Export:** Exports this combined transaction list to CSV so the user can use it in Excel, for accountants, or for their own records.
 
 ---
 
 ## 10. Transaction Matching (Reconciliation)
 
-Reconciliation matches **sales** to **expenses** (e.g. sale revenue vs. shipping cost) over a date range.
+**What it does:** Lets the user tie specific expenses to specific sales over a date range (e.g. “this $5 shipping expense goes with this $50 sale”). That way they can see which costs belong to which sale and what is still unmatched—useful for understanding true profit per order or for bookkeeping.
 
-- **Home:** `/transaction-matching/` – list reconciliation sessions.
-- **New session:** `/transaction-matching/new/` – create session (from_date, to_date, note).
-- **Session detail:** `/transaction-matching/<session_id>/` – view matches and remaining amounts.
-- **Add match:** `/transaction-matching/<session_id>/add-match/` – link a sale and an expense (full or partial amount).
-- **Delete match:** `/transaction-matching/<session_id>/delete-match/<match_id>/` – remove a match.
-- **Close session:** `/transaction-matching/<session_id>/close/` – mark session closed.
+- **Home:** Lists all reconciliation sessions (each session is a date range the user chose). User can open an existing session or create a new one.
+- **New session:** Creates a reconciliation session: user picks a from-date and to-date and can add a note (e.g. “January 2025”). The session holds all matches for that period.
+- **Session detail:** Shows the sales and expenses in that date range, which ones are already matched (sale ↔ expense, full or partial amount), and how much is still unmatched on each sale or expense.
+- **Add match:** Links one sale and one expense and assigns an amount (full or partial). For example: “$5 of this $8 shipping expense matches this $50 Poshmark sale.” The app records the match and updates remaining amounts.
+- **Delete match:** Removes a match so that sale and expense are no longer linked; amounts become unmatched again.
+- **Close session:** Marks the session as closed so the user knows they are done reconciling that period (no lock—it is a status only).
 
-Helps resellers see which expenses tie to which sales and track unmatched amounts.
+This helps resellers see which expenses tie to which sales and track unmatched amounts for follow-up or reporting.
 
 ---
 
 ## 11. Reseller Reports
 
-All report pages support date filters where relevant. Access to some reports (e.g. Tax Calculator) may be gated by plan (e.g. Premium/Ultimate).
+**What it does:** Gives the user ready-made reports for profit, inventory value, platform performance, taxes, and consignment payouts. All report pages support date filters where relevant. Some reports (e.g. Tax Calculator) may be limited by plan (e.g. Premium/Ultimate).
 
 ### 11.1 Profit & Loss (P&L)
 
-- **Report:** `/reseller-reports/` – revenue, COGS, gross profit, expenses, net profit for a date range.
-- **Export:** `/reseller-reports/export/` – P&L CSV.
+Shows how the business performed over a date range: **revenue** (from sales), **COGS** (cost of goods sold, from inventory cost), **gross profit** (revenue − COGS), **expenses** (from the expense list), and **net profit** (gross profit − expenses). The user can see if they are making money and where the money goes. **Export** downloads this summary as a CSV (e.g. for an accountant or records).
 
 ### 11.2 Inventory Valuation
 
-- **Report:** `/reseller-reports/inventory/` – value of inventory (e.g. by cost or quantity).
-- **Export:** `/reseller-reports/inventory/export/`.
+Shows the **total value of current inventory**—e.g. sum of (quantity × cost) for all items still in stock—so the user knows how much capital is tied up in unsold goods. Optional search/filter by item. **Export** downloads the valuation list as CSV.
 
 ### 11.3 Sales by Platform
 
-- **Report:** `/reseller-reports/platforms/` – sales broken down by platform (eBay, Poshmark, etc.).
-- **Export:** `/reseller-reports/platforms/export/`.
+Breaks down sales **by selling platform** (eBay, Poshmark, Depop, etc.) for the chosen date range. The user can see which platforms bring in the most revenue and compare performance. **Export** downloads the platform breakdown as CSV.
 
 ### 11.4 Per Item Analysis
 
-- **Report:** `/reseller-reports/per-item/` – performance per inventory item (e.g. sales, profit per item).
-- **Export:** `/reseller-reports/per-item/export/`.
+Shows **performance per inventory item**: how many units sold, revenue, cost, and profit per item. Helps the user see which products are profitable and which are not. **Export** downloads the per-item data as CSV.
 
 ### 11.5 Tax Calculator
 
-- **Report:** `/reseller-reports/tax-calculator/` – tax-related view/estimates (plan-gated).
+Provides **tax-related views or estimates** (e.g. income subject to tax, rough tax estimate) based on the user’s sales and expenses. Useful for planning and filing. Access may be limited to certain plans (e.g. Premium/Ultimate).
 
 ### 11.6 Schedule C Generator
 
-- **Report:** `/reseller-reports/schedule-c/` – data structured for Schedule C (US tax).
+Organizes the user’s revenue and expense data in a structure that aligns with **IRS Schedule C** (US sole-proprietor business tax form), so they or their accountant can transfer numbers more easily to the actual form.
 
 ### 11.7 Accrual Accounting
 
-- **Report:** `/reseller-reports/accrual/` – accrual-based view of revenue/expenses.
+Shows revenue and expenses in an **accrual** view (when earned/incurred) rather than only when cash moved. Helps users who need accrual-based books or reports for lenders, investors, or tax.
 
 ### 11.8 Consignment Commission
 
-- **Report:** `/reseller-reports/consignment-commission/` – commission owed to consignors based on sales and commission rates.
+Calculates **how much commission is owed to each consignor** based on sales linked to them and their commission rate. The user can see a list of payouts (e.g. “Vendor A: $120, Vendor B: $85”) so they can pay consignors correctly.
 
 ---
 
 ## 12. Get Started (Onboarding)
 
-- **Page:** `/get-started/` – checklist of tasks to complete (e.g. connect marketplace, add inventory, report first sale, add expense, reconciliation, view P&L, connect bank, view transaction details, per item analysis).
-- **Toggle task:** `/get-started/toggle/<key>/` – mark a task done/undone.
+**What it does:** Guides new users through the main actions so they set up inventory, record a sale, add an expense, connect a marketplace or bank, and open key reports. A checklist shows progress and reduces the chance they miss important steps.
 
-Tasks are stored per user. Completing relevant actions (e.g. first sale, first expense) auto-marks the corresponding task.
+- **Get Started page:** Displays a list of tasks (e.g. connect a marketplace, add your first inventory item, report your first sale, add your first expense, create a reconciliation session, view the P&L report, connect your bank account, view Transaction Details, view Per Item Analysis). Each task can be marked done or still to do.
+- **Toggle task:** Lets the user manually mark a task as done or undo it. Many tasks are also **auto-marked** when the user does the action (e.g. first sale created → “Report your first sale” is marked done; first expense → “Add your first expense” is marked done).
+
+Tasks are stored per user so progress is saved. This gives new resellers a clear path to get value from the app quickly.
 
 ---
 
 ## 13. Marketplace Integrations
 
-Central place: **Integrations** list at `/integration/`. User can **Connect** (OAuth or credentials), **Sync** (pull orders/products), use **CSV** import, or **Remove** an account. Limits (how many connections, which marketplaces can use Connect) depend on plan.
+**What it does:** Lets the user connect their selling accounts (eBay, Etsy, Shopify, Grailed, Depop, Poshmark, Mercari, Whatnot) so sales and sometimes inventory can be pulled into RASK automatically (sync) or so they can import orders via CSV for that account. Reduces manual data entry and keeps books in sync with marketplaces. The **Integrations** list is the central place: user adds an account (Connect or CSV), syncs it, or removes it. How many connections and which marketplaces can use “Connect” depend on the user’s plan.
 
 ### 13.1 General Integration Actions
 
-- **List:** `/integration/` – all connected marketplaces and their status.
-- **Connect marketplace:** `/integration/connect/` – choose provider and store name to add a new row (then Connect or CSV per provider).
-- **Delete integration:** `/integration/<id>/delete/` – remove a marketplace account.
-- **Sync (generic):** `/integration/<id>/sync/` – trigger sync for that account (actual sync is provider-specific).
+- **List:** Shows all connected marketplaces (and any “CSV-only” placeholders) with status (e.g. connected, last sync). User can see what is linked and open one to sync or delete.
+- **Connect marketplace:** User chooses a provider (e.g. Poshmark) and a store/account name; the app creates a row for that account. Then the user either completes **Connect** (OAuth or login flow) for that provider or uses **CSV import** for orders. So “connect” here means “add a marketplace account to my list.”
+- **Delete integration:** Removes that marketplace account from the user’s list. Sync and Connect for that account stop; the user can re-add later if needed.
+- **Sync:** Triggers a refresh for that account: the app fetches orders (and, where supported, inventory) from the provider’s API or stored auth and creates/updates sales (and inventory) in RASK. Actual behavior is provider-specific (eBay pulls orders + listings, Shopify orders + products, etc.).
 
 ### 13.2 eBay
 
-- **OAuth start:** `/integration/ebay/start/<acct_id>/` – redirect to eBay consent.
-- **Callback:** `/integration/ebay/callback/` – receive code, exchange for tokens, save. An alternate callback URL `/ebay/oauth/callback/` exists for local/testing compatibility.
-- **Sync orders:** `/integration/ebay/sync/<acct_id>/` – fetch orders and inventory from eBay API.
-
-Available on Basic and above (not Free). Plan limits: e.g. 2 connections on Premium, 5 on Ultimate.
+**What it does:** Connects the user’s eBay account via **OAuth** (secure sign-in with eBay). After connection, **Sync** pulls orders and listing/inventory data from eBay’s API into RASK so sales and inventory stay up to date without manual entry. Available on Basic and above (not Free). Plan limits how many eBay accounts can be connected (e.g. 2 on Premium, 5 on Ultimate). OAuth start redirects the user to eBay to consent; callback receives the code and exchanges it for tokens; sync runs on demand for that account.
 
 ### 13.3 Etsy
 
-- **OAuth start:** `/integration/etsy/start/<acct_id>/`.
-- **Callback:** `/integration/etsy/callback/`.
-- **Sync orders:** `/integration/etsy/sync/<acct_id>/`.
-
-Same plan logic as eBay.
+**What it does:** Same idea as eBay: **OAuth** connection to the user’s Etsy shop, then **Sync** pulls orders (and shop data as supported) into RASK. Reduces manual entry for Etsy sellers. Same plan logic as eBay (Basic+; connection limits by plan).
 
 ### 13.4 Shopify
 
-- **OAuth start:** `/integration/shopify/start/` or `/integration/shopify/start/<acct_id>/` – user enters shop domain, redirect to Shopify OAuth.
-- **Callback:** `/integration/shopify/callback/` – exchange code for access token, save shop and token.
-- **Sync orders:** `/integration/shopify/sync/<acct_id>/` – fetch orders and products from Shopify Admin API.
-
-Uses public app credentials (Client ID/Secret in .env). Same plan rules as eBay/Etsy.
+**What it does:** Connects the user’s Shopify store via **OAuth**. User enters their shop domain (e.g. mystore.myshopify.com); they are sent to Shopify to authorize the app; the app stores the access token. **Sync** then fetches orders and products from the Shopify Admin API so sales and inventory in RASK match the store. Uses a single public app (credentials in .env); any store can connect without an App Store listing. Same plan rules as eBay/Etsy.
 
 ### 13.5 Grailed
 
-- **Connect start:** `/integration/grailed/start/` or `/integration/grailed/start/<acct_id>/` – show login form (email, password, area, store name).
-- **Connect process:** `/integration/grailed/process/` – submit credentials; app logs in via cloudscraper/Playwright, stores tokens and cookies.
-- **Sync orders:** `/integration/grailed/sync/<acct_id>/` – fetch sales from Grailed API using stored auth.
-
-**Connect** only on **Ultimate** or **Beta Tester**. Free/Basic/Premium see Connect disabled; they can use CSV import.
+**What it does:** For Grailed there is no public OAuth, so **Connect** uses the user’s email and password (and area/store name). The app logs in via a browser-automation approach, stores session tokens/cookies, and then **Sync** fetches sales from Grailed’s API so orders appear as sales in RASK. **Connect** is only available on **Ultimate** or **Beta Tester**; Free/Basic/Premium users cannot use Connect and must use **CSV import** for Grailed orders.
 
 ### 13.6 Depop
 
-- **Connect start:** `/integration/depop/start/` or `/integration/depop/start/<acct_id>/` – two-step: (1) request magic link to email, (2) paste magic link to complete.
-- **Connect process:** `/integration/depop/process/` – step 1 sends link; step 2 exchanges link for session (cookies/token), saves account.
-- **Sync orders:** `/integration/depop/sync/<acct_id>/` – fetch orders (endpoint to be wired when available; currently placeholder).
-
-**Connect** only on **Ultimate** or **Beta Tester**.
+**What it does:** **Connect** is a two-step flow: (1) user requests a magic link to their Depop email, (2) user pastes that link back into RASK; the app exchanges it for a session and saves the account. **Sync** then pulls orders from Depop (when the endpoint is wired) into RASK. **Connect** only on **Ultimate** or **Beta Tester**.
 
 ### 13.7 Poshmark
 
-- **Connect start:** `/integration/poshmark/start/` or `/integration/poshmark/start/<acct_id>/`.
-- **Connect process:** `/integration/poshmark/process/` – credentials stored; login/sales endpoints to be filled when provided.
-- **Sync orders:** `/integration/poshmark/sync/<acct_id>/`.
-
-**Connect** only on **Ultimate** or **Beta Tester**. CSV import supported.
+**What it does:** **Connect** captures the user’s Poshmark credentials (or session) and stores them; **Sync** uses that to fetch sales so they appear in RASK. When the provider’s login/sales endpoints are fully wired, sync will populate sales automatically. **Connect** only on **Ultimate** or **Beta Tester**. Users on lower plans can still use **CSV import** for Poshmark orders.
 
 ### 13.8 Mercari
 
-- **Connect start:** `/integration/mercari/start/` or `/integration/mercari/start/<acct_id>/`.
-- **Connect process:** `/integration/mercari/process/`.
-- **Sync orders:** `/integration/mercari/sync/<acct_id>/`.
-
-**Connect** only on **Ultimate** or **Beta Tester**. CSV import supported.
+**What it does:** Same pattern as Poshmark: **Connect** (Ultimate/Beta only) stores auth; **Sync** pulls orders into RASK when supported. **CSV import** is available for all plans as an alternative.
 
 ### 13.9 Whatnot
 
-- **Connect start:** `/integration/whatnot/start/` or `/integration/whatnot/start/<acct_id>/`.
-- **Connect process:** `/integration/whatnot/process/`.
-- **Sync orders:** `/integration/whatnot/sync/<acct_id>/`.
-
-**Connect** only on **Ultimate** or **Beta Tester**. CSV import supported.
+**What it does:** Same pattern: **Connect** (Ultimate/Beta only) and **Sync** to bring Whatnot sales into RASK; **CSV import** available for other plans.
 
 ---
 
 ## 14. CSV Imports
 
-All imports support **duplicate-file detection**: same file (SHA256 hash) cannot be imported twice; user sees a message that the CSV was already uploaded.
+**What it does:** Lets the user bulk-import **orders (sales)**, **inventory**, or **expenses** from CSV files when they don’t use Connect/sync or when they prefer to upload exports from a marketplace or bank. Saves time vs. entering rows one by one. **Duplicate-file detection:** The app hashes each uploaded file; if the same file is uploaded again, it is rejected and the user is told that file was already imported—this avoids double-counting sales or expenses.
 
 ### 14.1 Orders (Sales) CSV
 
-- **URL:** `/imports/orders/<provider>/<acct_id>/` – e.g. provider = poshmark, depop, ebay, etc.; acct_id = marketplace account ID.
-- **Flow:** Upload CSV; app detects header row and maps columns per marketplace; creates/updates sales; stores file hash to block re-import of same file.
-
-Supports marketplace-specific column mapping (e.g. Poshmark, Depop, eBay, Etsy, Mercari, Whatnot) and generic format.
+User selects a marketplace (provider) and an account (acct_id), then uploads a CSV of orders (e.g. downloaded from Poshmark, Depop, eBay, Etsy, Mercari, Whatnot). The app detects the header row and maps columns per marketplace (or uses a generic format), then creates or updates sales in RASK. Each file’s hash is stored so the same file cannot be imported twice.
 
 ### 14.2 Inventory CSV
 
-- **URL:** `/imports/inventory/`.
-- **Flow:** Upload CSV; Poshmark-style or standard format (title, purchase_price, purchase_date, quantity, status); creates inventory items; file hash stored to prevent duplicate import.
+User uploads a CSV of inventory items. The app supports Poshmark-style or standard columns (e.g. title, purchase_price, purchase_date, quantity, status) and creates inventory records. File hash is stored to prevent re-importing the same file.
 
 ### 14.3 Expenses CSV
 
-- **URL:** `/imports/expenses/`.
-- **Flow:** Upload CSV with required headers (date, payee, amount, memo, gl_account, is_sourcing); creates expenses; file hash stored to prevent duplicate import.
+User uploads a CSV with required columns (date, payee, amount, memo, gl_account, is_sourcing). The app creates expense records. File hash is stored so the same file cannot be imported again.
 
 ---
 
 ## 15. Finance (Bank Connections and Plaid)
 
-- **Bank list:** `/finance/` – list connected bank accounts.
-- **Transactions for a bank:** `/finance/<id>/txns/` – view transactions for one connection.
-- **Delete connection:** `/finance/<id>/delete/`.
-- **Sync:** `/finance/<id>/sync/` – refresh transactions from Plaid.
-- **Plaid link token:** `/finance/plaid/link-token/` – get link token to launch Plaid Link (front-end).
-- **Plaid exchange:** `/finance/plaid/exchange/` – exchange public token for access token and store connection.
-- **Plaid webhook:** `/finance/plaid/webhook/` – receive Plaid webhooks (e.g. updates).
-- **Allocation create:** `/finance/alloc/create/<txn_id>/` – allocate a bank transaction to a sale or expense.
-- **Allocation delete:** `/finance/alloc/delete/<alloc_id>/` – remove an allocation.
+**What it does:** Lets the user connect their **bank account(s)** via **Plaid** so real bank transactions appear in RASK. They can then view transactions, refresh them (sync), and **allocate** transactions to sales or expenses (e.g. “this bank debit is the shipping expense for that order”). Bank data is used in **Transaction Details** and in reporting so the user has a full picture of cash flow. Plan may limit how many bank connections a user can add.
 
-Bank data is used in **Transaction Details** and reporting. Plan-based limits may apply (e.g. number of connections).
+- **Bank list:** Shows all connected bank accounts (institution name, last sync, etc.). User can open one to see transactions, sync, or delete.
+- **Transactions for a bank:** Shows the list of transactions for that connection (date, description, amount, etc.). User can see what hit the account and optionally allocate items to sales/expenses.
+- **Delete connection:** Removes the bank connection; transactions for that account are no longer fetched. User can reconnect later.
+- **Sync:** Asks Plaid for the latest transactions and updates the list so the user sees recent activity without re-linking the account.
+- **Plaid link token:** Back-end provides a link token so the front-end can open **Plaid Link** (Plaid’s UI where the user picks their bank and signs in). No credentials are entered into RASK; Plaid handles auth.
+- **Plaid exchange:** After the user completes Plaid Link, the front-end sends the one-time public token here; the app exchanges it with Plaid for an access token and stores the connection so future syncs can pull transactions.
+- **Plaid webhook:** Plaid sends webhooks (e.g. when an account has new data or is disconnected). The app receives them and can update connection status or trigger syncs as needed.
+- **Allocation create:** User links a bank transaction to a sale or an expense (e.g. “this $50 deposit is from this Poshmark sale” or “this $8 debit is this shipping expense”). Creates an allocation record so reports and Transaction Details can show the link.
+- **Allocation delete:** Removes an allocation so that bank transaction is no longer tied to that sale or expense.
 
 ---
 
 ## 16. Admin Panel
 
-Separate area for app operators. Base path: `/admin-panel/`.
+**What it does:** Separate area for **app operators** (not resellers). Admins log in at `/admin-panel/` and can control who can sign up, who is an admin, and approve or decline admin registration requests. Regular users do not see this; it is for running the product.
 
-- **Login:** `/admin-panel/login/`.
-- **Register (admin):** `/admin-panel/register/` – can be disabled via App Settings.
-- **Logout:** `/admin-panel/logout/`.
-- **Password reset:** `/admin-panel/password-reset/`.
-- **Dashboard:** `/admin-panel/` – overview (e.g. user count, pending requests).
-- **Settings:** `/admin-panel/settings/` – e.g. enable/disable user registration, admin registration.
-- **Users list:** `/admin-panel/users/` – list regular users.
-- **Delete user:** `/admin-panel/users/<user_id>/delete/`.
-- **Admins list:** `/admin-panel/admins/` – list admin users.
-- **Delete admin:** `/admin-panel/admins/<admin_id>/delete/`.
-- **Approval requests:** `/admin-panel/approval-requests/` – list pending admin sign-up requests.
-- **Approve request:** `/admin-panel/approval-requests/<request_id>/approve/`.
-- **Decline request:** `/admin-panel/approval-requests/<request_id>/decline/`.
+- **Login / Logout / Password reset:** Same idea as main app but for admin accounts; keeps admin access secure.
+- **Register (admin):** Lets someone request an admin account (e.g. username, email, password). Can be disabled in App Settings so no new admin sign-ups are possible.
+- **Dashboard:** Overview of the app: e.g. total user count, number of pending admin approval requests. Quick glance at system health and pending work.
+- **Settings:** Turn **user registration** on or off (whether new resellers can sign up) and **admin registration** on or off (whether new admin requests are accepted). Single place to lock or open sign-ups.
+- **Users list:** Lists all regular (reseller) users. Admin can see who is in the system and open a user if needed.
+- **Delete user:** Permanently removes a reseller account and their data (use with care).
+- **Admins list:** Lists all admin users so the operator can see who has admin access.
+- **Delete admin:** Removes an admin’s access so they can no longer log in to the admin panel.
+- **Approval requests:** Lists pending admin sign-up requests (people who asked to become an admin and are waiting for approval).
+- **Approve / Decline request:** Approves a request (the person becomes an admin and can log in) or declines it (the request is closed and they do not get access). Ensures only trusted people get admin rights.
 
 ---
 
 ## 17. Security and Data
 
-- **Encryption:** Sensitive fields (e.g. marketplace tokens, passwords, bank tokens) are encrypted at rest using app-level encryption.
-- **Sessions:** Django sessions for login and OAuth state (e.g. Shopify state, eBay state).
-- **CSRF:** All forms and state-changing requests use CSRF protection.
-- **File hashes:** CSV import hashes (orders, inventory, expenses) are stored to prevent duplicate uploads; no raw file content stored.
+**What it does:** Protects user data and prevents common attacks so resellers can trust the app with sales, expenses, and bank links.
+
+- **Encryption:** Sensitive data (marketplace tokens, stored passwords, Plaid/bank tokens) is encrypted at rest. If the database is exposed, these values are not readable without the app’s key.
+- **Sessions:** Login and OAuth flows use Django sessions so the server knows who is logged in and can safely complete “redirect to eBay/Shopify and back” without exposing state to the client.
+- **CSRF:** All forms and state-changing requests require a CSRF token so requests must come from the app’s own pages, reducing cross-site request forgery.
+- **File hashes:** For CSV imports, the app stores only a hash of each file (not the file itself). That way it can block duplicate uploads without keeping raw file content.
 
 ---
 
 ## 18. Summary Table of All Features
 
-| Area | Features |
-|------|----------|
-| **Auth** | Register, login (email/username), logout, password reset, account settings |
-| **Dashboard** | Dashboard home, dashboard CSV export |
-| **Inventory** | List, create, edit, delete, bulk edit, bulk delete; consignor; extra_data |
-| **Sales** | List, create, edit, delete, details, bulk edit; platform; external_id |
-| **Expenses** | List, create, edit, delete, bulk edit; gl_account; is_sourcing |
-| **Vendors** | List, create, edit, delete; consignor flag; commission rate |
-| **Transaction Details** | View, CSV export |
-| **Reconciliation** | Sessions: new, detail, add match, delete match, close |
-| **Reports** | P&L, inventory valuation, sales by platform, per item, tax calculator, Schedule C, accrual, consignment commission; exports where listed |
-| **Get Started** | Onboarding checklist, toggle task |
-| **Integrations** | List, connect (add account), delete, sync; per-provider OAuth/Connect and sync (eBay, Etsy, Shopify, Grailed, Depop, Poshmark, Mercari, Whatnot); plan limits |
-| **CSV** | Orders (per provider/account), inventory, expenses; duplicate-file blocking |
-| **Finance** | Bank list, transactions, delete, sync, Plaid link/exchange/webhook, allocations |
-| **Admin** | Login, register, logout, password reset, dashboard, settings, users, admins, approval requests (approve/decline) |
+| Area | What it does (short) |
+|------|----------------------|
+| **Auth** | Register, sign in with email or username, sign out, reset password, update account/profile. |
+| **Dashboard** | One-screen overview of key metrics and quick links; export that view as CSV. |
+| **Inventory** | List, add, edit, delete items (single or bulk); link consignors and extra fields; quantity/status for COGS and reporting. |
+| **Sales** | List, add, edit, delete sales (single or bulk); link to inventory and platform; optional marketplace fields and external_id for sync/CSV. |
+| **Expenses** | List, add, edit, delete expenses (single or bulk); GL account and sourcing flag for reporting. |
+| **Vendors** | List, add, edit, delete vendors; mark consignors and set commission rate for commission report. |
+| **Transaction Details** | Single view of sales + expenses + bank transactions; export to CSV. |
+| **Reconciliation** | Create sessions by date range; link sales to expenses (full/partial); view unmatched amounts; close session. |
+| **Reports** | P&L, inventory valuation, sales by platform, per item, tax calculator, Schedule C, accrual, consignment commission; CSV exports where listed. |
+| **Get Started** | Onboarding checklist; mark tasks done (manual or auto when user does the action). |
+| **Integrations** | Add/remove marketplace accounts; Connect (OAuth or login) and Sync per provider (eBay, Etsy, Shopify, Grailed, Depop, Poshmark, Mercari, Whatnot); plan limits. |
+| **CSV** | Import orders (per provider/account), inventory, or expenses from CSV; block duplicate files by hash. |
+| **Finance** | Connect banks via Plaid; list transactions; sync; allocate transactions to sales/expenses; delete connection. |
+| **Admin** | Operator login; enable/disable user and admin registration; list/delete users and admins; approve/decline admin requests. |
 
 ---
 
 ## 19. Plans and Feature Access (Recap)
 
-- **Free:** 3 marketplaces; CSV only for orders; no OAuth; one per provider.
-- **Basic:** 8 marketplaces; OAuth (eBay, Etsy, Shopify); one per provider.
-- **Premium:** 16 marketplaces; 2 OAuth per provider; 2 accounts per non-API marketplace; Connect for non-API disabled.
-- **Ultimate:** Unlimited; 5 OAuth per provider; 5 per non-API; **Connect enabled for Grailed, Depop, Poshmark, Mercari, Whatnot**.
-- **Beta Tester:** Same Connect access as Ultimate for testing.
+- **Free:** Up to 3 marketplace connections; orders via CSV only (no OAuth); one account per marketplace.
+- **Basic:** Up to 8 connections; OAuth for eBay, Etsy, Shopify; one account per provider.
+- **Premium:** Up to 16 connections; up to 2 OAuth per provider; up to 2 accounts per non-API marketplace; Connect for Grailed/Depop/Poshmark/Mercari/Whatnot **disabled** (CSV only).
+- **Ultimate:** Unlimited connections; up to 5 OAuth per provider; up to 5 accounts per marketplace; **Connect enabled** for Grailed, Depop, Poshmark, Mercari, Whatnot.
+- **Beta Tester:** Same Connect access as Ultimate for testing (no payment).
 
 ---
 
